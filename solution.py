@@ -3,7 +3,6 @@
 Run it with::
 
     python3 solution.py
-
 The script executes the full pipeline step by step and stops at the first
 step you have not implemented yet, with a reminder of what is missing.
 Implement the three functions below (``associate``, ``correct_map``,
@@ -48,72 +47,128 @@ def path_length(points: List[Point], path: List[int]) -> float:
     nodes of the path.
     """
     return sum(math.dist(points[a], points[b]) for a, b in zip(path, path[1:]))
-
-
 # ---------------------------------------------------------------------------
-# Step 3 -- Data association (yours to implement)
+# Step 3 -- associations        (implemented)
 # ---------------------------------------------------------------------------
 
 def associate(map_points: Map, observations: List[Point]) -> List[Tuple[int, int]]:
-    """Associate every observation with the map point it was generated from.
+    """To solve the task i created an algorithm that first create a new list that contains
+    Tuples of points and their index. """
 
-    Given the map and the observations (noisy, incomplete and shuffled),
-    recover the observation-to-map-point correspondence.
+    remaining_observations = list(enumerate(observations))
+    remaining_map = list(enumerate(map_points))
+    # the empty list that will contain associations
+    associations = []
 
-    Returns:
-        The association couples as a list of ``(map_index, observation_index)``
-        tuples, e.g. ``[(0, 12), (3, 5)]`` means that observation 12 was
-        generated from map point 0, and observation 5 from map point 3.
-    """
-    raise NotImplementedError("Step 3 (data association) is yours to implement")
+    """to associate every observation index to a map index, i compute every possible distance between
+       each point of remaining observations and remaining map. After that I find the min_distance,I append these points' indexes
+        to associations and to avoid repetitions before the next iteration i delete these points and their indexes from remainingmap
+        and remaing observation. Since it s possible that there are more map_points than observations when I have associated each observation
+        I store the remaing map indexes in asociations.
 
+        """
+    for i in range(len(observations)):
+
+        min_distance = 100000 # to inizialise min_distance i chose a very large number, so it s gonna be surely changed during the first iteration
+        best_map_index = None
+        best_observation_index = None
+
+
+        for map_index, map_point in remaining_map:
+            for observation_index, observation_point in remaining_observations:
+
+                distance = (
+                    (map_point[0] - observation_point[0])**2
+                    + (map_point[1] - observation_point[1])**2
+                )**0.5
+
+
+                if distance < min_distance:
+                    min_distance = distance
+                    best_map_index = map_index
+                    best_observation_index = observation_index
+                    best_map_point = map_point
+                    best_observation_point = observation_point
+
+
+        associations.append((best_map_index, best_observation_index))
+
+        map_tuple = (best_map_index, best_map_point)
+        remaining_map.remove(map_tuple)
+        observations_tuple = (best_observation_index, best_observation_point)
+        remaining_observations.remove(observations_tuple)
+
+
+    for map_index, point in remaining_map:
+        associations.append((map_index, map_index))
+
+    return associations
 
 # ---------------------------------------------------------------------------
-# Step 4 -- Map correction (yours to implement)
+# Step 4 -- Map correction (implemented)
 # ---------------------------------------------------------------------------
+
 
 def correct_map(
     map_points: Map,
     observations: List[Point],
     associations: List[Tuple[int, int]],
 ) -> Map:
-    """Correct the map, given the data association.
+    """As requested by the task I create the car's updated internal map. I set the new position of each landmark
+    to the midpoint of its previous map position and its observed position."""
+    corrected_map = list(map_points)
 
-    For every association couple ``(i, j)``, the corrected position of map
-    point ``i`` is the average (midpoint) of ``map_points[i]`` and
-    ``observations[j]``. Map points without an associated observation keep
-    their original position.
+    for i, j in associations:
+      if i!=j: #Thanks to this map's points that were not observed don't change their position
+        x_map, y_map = map_points[i]
+        x_obs, y_obs = observations[j]
 
-    Returns:
-        The corrected map: a list of ``(x, y)`` tuples with the same length
-        and the same order as ``map_points``.
-    """
-    raise NotImplementedError("Step 4 (map correction) is yours to implement")
+        corrected_map[i] = (
+            (x_map + x_obs) / 2,
+            (y_map + y_obs) / 2,
+        )
+      else:
+        corrected_map[i] = map_points[i]
+
+    return corrected_map
 
 
 # ---------------------------------------------------------------------------
-# Step 5 -- Path finding (yours to implement)
+# Step 5 -- Path finding (implemented)
 # ---------------------------------------------------------------------------
 
 def find_path(corrected_map: Map) -> List[int]:
-    """Find a path that visits every node of the corrected map exactly once.
+    """I start the algorithm by choosing a random element as the starting point, first i store it in the path list and delete it
+    from the unvisited list, then  i compure every distance between this point and the others. I choose the min distance and store the 
+    new point i found in path, delete it from the unvisited list and repeat the iteration...  """
+    n = len(corrected_map)
 
-    Return the path as a list of node indices in visit order, e.g.
-    ``[4, 0, 11, 2, ...]``. A path that includes each node exactly once is
-    usually called a *Hamiltonian path*: any permutation of the node indices
-    is a formally valid answer, but:
+    start = random.randrange(n)
 
-    * **Bonus 1 (+1 point)**: use a heuristic or an algorithm (e.g. nearest
-      neighbour, greedy insertion, 2-opt, ...) so that the total length of
-      your path is clearly shorter than the worst possible path. You can
-      measure it with :func:`path_length`.
+    path = [start]
+    unvisited = list(range(n))
+    unvisited.remove(start)
 
-    * **Bonus 2 (+1 point)**: no arrow of the path goes over a previous
-      arrow (arrows that only touch at a shared node do not count as
-      crossings). You can check it visually with ``visualize_path``.
-    """
-    raise NotImplementedError("Step 5 (path finding) is yours to implement")
+    while len(unvisited) > 0:
+        current = path[-1]
 
+        min_distance = 100000 # to inizialise min_distance i chose a very large number, so it s gonna be surely changed during the first iteration
+        next_point = None
+
+
+        for i in unvisited:
+            distance = math.dist(corrected_map[current], corrected_map[i] )
+
+            if distance < min_distance:
+                min_distance = distance
+                next_point = i
+
+
+        path.append(next_point)
+
+        unvisited.remove(next_point)
+
+    return path
 
 # ---------------------------------------------------------------------------
 # Pipeline
