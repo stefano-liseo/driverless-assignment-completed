@@ -11,7 +11,7 @@ Implement the three functions below (``associate``, ``correct_map``,
 
 import math
 from typing import List, Tuple
-
+import random
 from map_generation import Map, Point, generate_map, generate_observations
 from visualization import (
     visualize_association_n_correction,
